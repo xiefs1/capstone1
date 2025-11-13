@@ -1,0 +1,28 @@
+# Sample requirements file for SCA model testing
+# Mix of vulnerable and non-vulnerable packages
+
+# Vulnerable packages (known CVEs)
+Django==2.2.0
+requests==2.19.0
+urllib3==1.24.1
+Jinja2==2.10
+Pillow==6.2.1
+PyYAML==5.1
+lxml==4.2.5
+cryptography==2.3
+tensorflow==1.12.0
+
+# Non-vulnerable packages (safe versions)
+numpy==1.21.6
+pandas==1.3.5
+scikit-learn==0.24.2
+matplotlib==3.5.3
+Flask==2.0.3
+Werkzeug==2.0.3
+click==8.0.4
+itsdangerous==2.0.1
+MarkupSafe==2.0.1
+python-dateutil==2.8.2
+
+
+
