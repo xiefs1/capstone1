@@ -1,0 +1,436 @@
+[
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "sqlinjecti-001-001",
+    "vulnerability": {
+      "name": "SQL Injection",
+      "cwe_id": "CWE-89",
+      "severity": "Low",
+      "confidence": 0.49
+    },
+    "code_snippet": "admin' OR '1'='1' --",
+    "issue_description": "The code directly concatenates user input into a SQL query string without sanitization or parameterization. The vulnerable code 'admin' OR '1'='1' --' allows an attacker to inject malicious SQL code that can manipulate the query logic, potentially bypassing authentication or accessing unauthorized data.",
+    "impact": "An attacker can execute arbitrary SQL commands, potentially leading to: (1) Authentication bypass by injecting ' OR '1'='1' -- or similar payloads, (2) Unauthorized data access or exfiltration of sensitive information, (3) Database schema manipulation and data modification, (4) Complete database compromise including deletion of tables, (5) Potential privilege escalation if the database user has elevated permissions.",
+    "recommendation": {
+      "fixed_code": "# Use parameterized queries (prepared statements)\nquery = \"SELECT * FROM users WHERE username = %s AND password = %s\"\ncursor.execute(query, (username, password))\n\n# OR using ORM (e.g., SQLAlchemy)\n# user = session.query(User).filter(User.username == username, User.password == password).first()",
+      "explanation": "Using parameterized queries (prepared statements) ensures that user input is treated as data, not executable code. The database driver handles proper escaping and type checking, preventing SQL injection attacks regardless of the input content. This is the most effective defense against SQL injection.",
+      "best_practices": [
+        "Always use parameterized queries or prepared statements instead of string concatenation",
+        "Use ORM frameworks (SQLAlchemy, Django ORM, Hibernate) that handle SQL injection prevention automatically",
+        "Validate and sanitize all user input before processing",
+        "Implement principle of least privilege for database accounts",
+        "Regularly audit code for dynamic SQL construction patterns",
+        "Use stored procedures with parameterized inputs when appropriate"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/89.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-002",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Medium",
+      "confidence": 0.58
+    },
+    "code_snippet": "anything",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code 'anything' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "sqlinjecti-001-003",
+    "vulnerability": {
+      "name": "SQL Injection",
+      "cwe_id": "CWE-89",
+      "severity": "Low",
+      "confidence": 0.34
+    },
+    "code_snippet": "admin'; DROP TABLE users; --",
+    "issue_description": "The code directly concatenates user input into a SQL query string without sanitization or parameterization. The vulnerable code 'admin'; DROP TABLE users; --' allows an attacker to inject malicious SQL code that can manipulate the query logic, potentially bypassing authentication or accessing unauthorized data.",
+    "impact": "An attacker can execute arbitrary SQL commands, potentially leading to: (1) Authentication bypass by injecting ' OR '1'='1' -- or similar payloads, (2) Unauthorized data access or exfiltration of sensitive information, (3) Database schema manipulation and data modification, (4) Complete database compromise including deletion of tables, (5) Potential privilege escalation if the database user has elevated permissions.",
+    "recommendation": {
+      "fixed_code": "# Use parameterized queries (prepared statements)\nquery = \"SELECT * FROM users WHERE username = %s AND password = %s\"\ncursor.execute(query, (username, password))\n\n# OR using ORM (e.g., SQLAlchemy)\n# user = session.query(User).filter(User.username == username, User.password == password).first()",
+      "explanation": "Using parameterized queries (prepared statements) ensures that user input is treated as data, not executable code. The database driver handles proper escaping and type checking, preventing SQL injection attacks regardless of the input content. This is the most effective defense against SQL injection.",
+      "best_practices": [
+        "Always use parameterized queries or prepared statements instead of string concatenation",
+        "Use ORM frameworks (SQLAlchemy, Django ORM, Hibernate) that handle SQL injection prevention automatically",
+        "Validate and sanitize all user input before processing",
+        "Implement principle of least privilege for database accounts",
+        "Regularly audit code for dynamic SQL construction patterns",
+        "Use stored procedures with parameterized inputs when appropriate"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/89.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-004",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Medium",
+      "confidence": 0.58
+    },
+    "code_snippet": "anything",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code 'anything' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "xss-001-005",
+    "vulnerability": {
+      "name": "Cross-Site Scripting (XSS)",
+      "cwe_id": "CWE-79",
+      "severity": "Low",
+      "confidence": 0.41
+    },
+    "code_snippet": "<script>alert('XSS')</script>",
+    "issue_description": "The code renders user-controlled input without proper encoding or sanitization. The vulnerable code '<script>alert('XSS')</script>' allows an attacker to inject malicious scripts that execute in the context of other users' browsers, leading to session hijacking or data theft.",
+    "impact": "An attacker can inject malicious scripts into web pages viewed by other users, potentially leading to: (1) Session hijacking and account takeover by stealing authentication cookies, (2) Theft of sensitive data including passwords, tokens, and personal information, (3) Defacement of web pages or redirection to malicious sites, (4) Installation of malware or keyloggers on user systems, (5) Phishing attacks by creating fake login forms that steal credentials.",
+    "recommendation": {
+      "fixed_code": "# HTML encode user input before rendering\nfrom html import escape\nsafe_output = escape(user_input)\n\n# OR use framework-specific escaping\n# Django: {{ user_input|escape }}\n# Flask: {{ user_input|e }}\n# React: Use JSX which auto-escapes\n\n# For JavaScript:\n# const safeOutput = document.createTextNode(userInput);\n# element.appendChild(safeOutput);",
+      "explanation": "HTML encoding converts special characters to their HTML entity equivalents (e.g., < becomes &lt;), preventing browsers from interpreting user input as executable code. Always encode user input based on the output context (HTML, JavaScript, CSS, URL).",
+      "best_practices": [
+        "Always HTML-encode user input before rendering in HTML context",
+        "Use Content Security Policy (CSP) headers to restrict script execution",
+        "Validate and sanitize input on both client and server side",
+        "Use framework-provided templating engines that auto-escape by default",
+        "Avoid using innerHTML, outerHTML, or document.write() with user input",
+        "Implement output encoding based on context (HTML, JavaScript, CSS, URL)"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/79.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "xss-001-006",
+    "vulnerability": {
+      "name": "Cross-Site Scripting (XSS)",
+      "cwe_id": "CWE-79",
+      "severity": "Low",
+      "confidence": 0.34
+    },
+    "code_snippet": "<img src=x onerror=alert('XSS')>",
+    "issue_description": "The code renders user-controlled input without proper encoding or sanitization. The vulnerable code '<img src=x onerror=alert('XSS')>' allows an attacker to inject malicious scripts that execute in the context of other users' browsers, leading to session hijacking or data theft.",
+    "impact": "An attacker can inject malicious scripts into web pages viewed by other users, potentially leading to: (1) Session hijacking and account takeover by stealing authentication cookies, (2) Theft of sensitive data including passwords, tokens, and personal information, (3) Defacement of web pages or redirection to malicious sites, (4) Installation of malware or keyloggers on user systems, (5) Phishing attacks by creating fake login forms that steal credentials.",
+    "recommendation": {
+      "fixed_code": "# HTML encode user input before rendering\nfrom html import escape\nsafe_output = escape(user_input)\n\n# OR use framework-specific escaping\n# Django: {{ user_input|escape }}\n# Flask: {{ user_input|e }}\n# React: Use JSX which auto-escapes\n\n# For JavaScript:\n# const safeOutput = document.createTextNode(userInput);\n# element.appendChild(safeOutput);",
+      "explanation": "HTML encoding converts special characters to their HTML entity equivalents (e.g., < becomes &lt;), preventing browsers from interpreting user input as executable code. Always encode user input based on the output context (HTML, JavaScript, CSS, URL).",
+      "best_practices": [
+        "Always HTML-encode user input before rendering in HTML context",
+        "Use Content Security Policy (CSP) headers to restrict script execution",
+        "Validate and sanitize input on both client and server side",
+        "Use framework-provided templating engines that auto-escape by default",
+        "Avoid using innerHTML, outerHTML, or document.write() with user input",
+        "Implement output encoding based on context (HTML, JavaScript, CSS, URL)"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/79.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "xss-001-007",
+    "vulnerability": {
+      "name": "Cross-Site Scripting (XSS)",
+      "cwe_id": "CWE-79",
+      "severity": "Low",
+      "confidence": 0.35
+    },
+    "code_snippet": "<iframe src=\"javascript:alert('XSS')\"></iframe>",
+    "issue_description": "The code renders user-controlled input without proper encoding or sanitization. The vulnerable code '<iframe src=\"javascript:alert('XSS')\"></iframe>' allows an attacker to inject malicious scripts that execute in the context of other users' browsers, leading to session hijacking or data theft.",
+    "impact": "An attacker can inject malicious scripts into web pages viewed by other users, potentially leading to: (1) Session hijacking and account takeover by stealing authentication cookies, (2) Theft of sensitive data including passwords, tokens, and personal information, (3) Defacement of web pages or redirection to malicious sites, (4) Installation of malware or keyloggers on user systems, (5) Phishing attacks by creating fake login forms that steal credentials.",
+    "recommendation": {
+      "fixed_code": "# HTML encode user input before rendering\nfrom html import escape\nsafe_output = escape(user_input)\n\n# OR use framework-specific escaping\n# Django: {{ user_input|escape }}\n# Flask: {{ user_input|e }}\n# React: Use JSX which auto-escapes\n\n# For JavaScript:\n# const safeOutput = document.createTextNode(userInput);\n# element.appendChild(safeOutput);",
+      "explanation": "HTML encoding converts special characters to their HTML entity equivalents (e.g., < becomes &lt;), preventing browsers from interpreting user input as executable code. Always encode user input based on the output context (HTML, JavaScript, CSS, URL).",
+      "best_practices": [
+        "Always HTML-encode user input before rendering in HTML context",
+        "Use Content Security Policy (CSP) headers to restrict script execution",
+        "Validate and sanitize input on both client and server side",
+        "Use framework-provided templating engines that auto-escape by default",
+        "Avoid using innerHTML, outerHTML, or document.write() with user input",
+        "Implement output encoding based on context (HTML, JavaScript, CSS, URL)"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/79.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-008",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Low",
+      "confidence": 0.48
+    },
+    "code_snippet": "127.0.0.1; ls -la",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code '127.0.0.1; ls -la' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "pathtraver-001-009",
+    "vulnerability": {
+      "name": "Path Traversal",
+      "cwe_id": "CWE-22",
+      "severity": "Low",
+      "confidence": 0.47
+    },
+    "code_snippet": "127.0.0.1 && cat /etc/passwd",
+    "issue_description": "The code constructs file paths using user-controlled input without proper validation. The vulnerable code '127.0.0.1 && cat /etc/passwd' allows an attacker to traverse outside the intended directory using '../' sequences, potentially accessing sensitive system files or application source code.",
+    "impact": "An attacker can access files and directories outside the intended directory, potentially leading to: (1) Reading sensitive system files such as /etc/passwd, /etc/shadow, or configuration files, (2) Accessing application source code revealing business logic and potential vulnerabilities, (3) Reading or modifying user data and personal information, (4) Bypassing access controls to view unauthorized content, (5) System information disclosure that aids in further attacks.",
+    "recommendation": {
+      "fixed_code": "# Use os.path.join() and validate path\nimport os\nfrom pathlib import Path\n\n# Normalize and validate path\nbase_dir = '/safe/directory'\nuser_path = os.path.normpath(user_input)\nfull_path = os.path.join(base_dir, user_path)\n\n# Ensure path stays within base directory\nif not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):\n    raise ValueError('Path traversal detected')\n\n# OR use pathlib\nbase = Path('/safe/directory')\nuser_file = Path(user_input)\nfull_path = base / user_file\nif not full_path.resolve().is_relative_to(base.resolve()):\n    raise ValueError('Path traversal detected')",
+      "explanation": "Path traversal attacks are prevented by normalizing paths and ensuring they stay within the intended directory. Using os.path.join() and validating that the resolved path starts with the base directory prevents '../' sequences from escaping the allowed directory.",
+      "best_practices": [
+        "Always validate and sanitize file paths from user input",
+        "Use os.path.join() or pathlib.Path for safe path construction",
+        "Validate that resolved paths stay within the intended directory",
+        "Maintain a whitelist of allowed files or directories",
+        "Use chroot jails or containerization to limit file system access",
+        "Implement proper access controls and file permissions"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/22.html",
+      "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-010",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Medium",
+      "confidence": 0.57
+    },
+    "code_snippet": "127.0.0.1 | whoami",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code '127.0.0.1 | whoami' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "pathtraver-001-011",
+    "vulnerability": {
+      "name": "Path Traversal",
+      "cwe_id": "CWE-22",
+      "severity": "Medium",
+      "confidence": 0.5
+    },
+    "code_snippet": "../../../etc/passwd",
+    "issue_description": "The code constructs file paths using user-controlled input without proper validation. The vulnerable code '../../../etc/passwd' allows an attacker to traverse outside the intended directory using '../' sequences, potentially accessing sensitive system files or application source code.",
+    "impact": "An attacker can access files and directories outside the intended directory, potentially leading to: (1) Reading sensitive system files such as /etc/passwd, /etc/shadow, or configuration files, (2) Accessing application source code revealing business logic and potential vulnerabilities, (3) Reading or modifying user data and personal information, (4) Bypassing access controls to view unauthorized content, (5) System information disclosure that aids in further attacks.",
+    "recommendation": {
+      "fixed_code": "# Use os.path.join() and validate path\nimport os\nfrom pathlib import Path\n\n# Normalize and validate path\nbase_dir = '/safe/directory'\nuser_path = os.path.normpath(user_input)\nfull_path = os.path.join(base_dir, user_path)\n\n# Ensure path stays within base directory\nif not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):\n    raise ValueError('Path traversal detected')\n\n# OR use pathlib\nbase = Path('/safe/directory')\nuser_file = Path(user_input)\nfull_path = base / user_file\nif not full_path.resolve().is_relative_to(base.resolve()):\n    raise ValueError('Path traversal detected')",
+      "explanation": "Path traversal attacks are prevented by normalizing paths and ensuring they stay within the intended directory. Using os.path.join() and validating that the resolved path starts with the base directory prevents '../' sequences from escaping the allowed directory.",
+      "best_practices": [
+        "Always validate and sanitize file paths from user input",
+        "Use os.path.join() or pathlib.Path for safe path construction",
+        "Validate that resolved paths stay within the intended directory",
+        "Maintain a whitelist of allowed files or directories",
+        "Use chroot jails or containerization to limit file system access",
+        "Implement proper access controls and file permissions"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/22.html",
+      "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "pathtraver-001-012",
+    "vulnerability": {
+      "name": "Path Traversal",
+      "cwe_id": "CWE-22",
+      "severity": "Medium",
+      "confidence": 0.55
+    },
+    "code_snippet": "....//....//....//etc/passwd",
+    "issue_description": "The code constructs file paths using user-controlled input without proper validation. The vulnerable code '....//....//....//etc/passwd' allows an attacker to traverse outside the intended directory using '../' sequences, potentially accessing sensitive system files or application source code.",
+    "impact": "An attacker can access files and directories outside the intended directory, potentially leading to: (1) Reading sensitive system files such as /etc/passwd, /etc/shadow, or configuration files, (2) Accessing application source code revealing business logic and potential vulnerabilities, (3) Reading or modifying user data and personal information, (4) Bypassing access controls to view unauthorized content, (5) System information disclosure that aids in further attacks.",
+    "recommendation": {
+      "fixed_code": "# Use os.path.join() and validate path\nimport os\nfrom pathlib import Path\n\n# Normalize and validate path\nbase_dir = '/safe/directory'\nuser_path = os.path.normpath(user_input)\nfull_path = os.path.join(base_dir, user_path)\n\n# Ensure path stays within base directory\nif not os.path.abspath(full_path).startswith(os.path.abspath(base_dir)):\n    raise ValueError('Path traversal detected')\n\n# OR use pathlib\nbase = Path('/safe/directory')\nuser_file = Path(user_input)\nfull_path = base / user_file\nif not full_path.resolve().is_relative_to(base.resolve()):\n    raise ValueError('Path traversal detected')",
+      "explanation": "Path traversal attacks are prevented by normalizing paths and ensuring they stay within the intended directory. Using os.path.join() and validating that the resolved path starts with the base directory prevents '../' sequences from escaping the allowed directory.",
+      "best_practices": [
+        "Always validate and sanitize file paths from user input",
+        "Use os.path.join() or pathlib.Path for safe path construction",
+        "Validate that resolved paths stay within the intended directory",
+        "Maintain a whitelist of allowed files or directories",
+        "Use chroot jails or containerization to limit file system access",
+        "Implement proper access controls and file permissions"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/22.html",
+      "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-013",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Medium",
+      "confidence": 0.58
+    },
+    "code_snippet": "http://localhost:5000",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code 'http://localhost:5000' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  },
+  {
+    "file": "vulnerable_test_cases.html",
+    "line_number": 1,
+    "rule_id": "neutral-001-014",
+    "vulnerability": {
+      "name": "Improper Input Validation",
+      "cwe_id": "CWE-20",
+      "severity": "Low",
+      "confidence": 0.49
+    },
+    "code_snippet": "python github/SAST/advanced_sast_with_remediation.py",
+    "issue_description": "The code processes user input without proper validation or sanitization. The vulnerable code 'python github/SAST/advanced_sast_with_remediation.py' allows an attacker to provide malicious input that bypasses validation checks, potentially leading to injection attacks or other security issues.",
+    "impact": "An attacker can provide malicious input that bypasses validation, potentially leading to: (1) Injection attacks (SQL, command, LDAP, etc.) by providing specially crafted input, (2) Data corruption through malformed input that breaks parsing logic, (3) Application errors that reveal sensitive information, (4) Unauthorized access by bypassing authentication or authorization checks, (5) System compromise through chained vulnerabilities.",
+    "recommendation": {
+      "fixed_code": "# Implement comprehensive input validation\nimport re\n\ndef validate_input(user_input, input_type='string', max_length=100):\n    if not user_input or len(user_input) > max_length:\n        raise ValueError('Invalid input length')\n    \n    if input_type == 'email':\n        pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$'\n        if not re.match(pattern, user_input):\n            raise ValueError('Invalid email format')\n    elif input_type == 'numeric':\n        if not user_input.isdigit():\n            raise ValueError('Input must be numeric')\n    \n    return user_input.strip()\n\nvalidated_input = validate_input(user_input, input_type='string')",
+      "explanation": "Input validation prevents malicious data from entering the application. Validate input type, length, format, and content against a whitelist of allowed values. Reject any input that doesn't meet strict criteria.",
+      "best_practices": [
+        "Validate all user input on the server side (client-side validation is not sufficient)",
+        "Use whitelist validation (allow only known good values) instead of blacklist",
+        "Validate input type, length, format, and range",
+        "Sanitize input by removing or encoding dangerous characters",
+        "Implement input validation at multiple layers (presentation, business, data)",
+        "Log validation failures for security monitoring"
+      ]
+    },
+    "references": [
+      "https://cwe.mitre.org/data/definitions/20.html",
+      "https://owasp.org/Top10/A03_2021-Injection/",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
+    ]
+  }
+]
