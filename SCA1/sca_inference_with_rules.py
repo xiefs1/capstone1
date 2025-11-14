@@ -1,270 +1,257 @@
 #!/usr/bin/env python3
-import os, json, argparse, sys
-import pandas as pd
-import numpy as np
+import sys
+import json
 import joblib
-from datetime import datetime
-from packaging import version as V
-from scipy import sparse as sp
-import xgboost as xgb
+import requests
+import pandas as pd
 
-# ---------- helpers ----------
-def parse_args():
-    ap = argparse.ArgumentParser(description="SCA inference with rules → JSON report")
-    ap.add_argument("--input", help="CSV file with rows to scan (ecosystem,package_name,version ...)")
-    ap.add_argument("--ecosystem", help="Single-mode: ecosystem, e.g. PyPI/npm/RubyGems")
-    ap.add_argument("--package", help="Single-mode: package name")
-    ap.add_argument("--version", help="Single-mode: current version")
-    ap.add_argument("--meta", default="sca_latest_meta.json", help="Metadata JSON for latest versions")
-    ap.add_argument("--train_meta", default="train_metadata.json", help="Training metadata JSON")
-    ap.add_argument("--preproc", help="Path to preprocessed PKL (default from train_metadata.json)")
-    ap.add_argument("--model", help="Path to model_xgb.json (default from train_metadata.json)")
-    ap.add_argument("--out", default="report.json", help="Output JSON path")
-    return ap.parse_args()
+# ---------------------- VERSION PARSER ----------------------
+def parse_version(v):
+    try:
+        parts = str(v).split(".")
+        major = int(parts[0]) if len(parts) > 0 else 0
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        patch = int(parts[2]) if len(parts) > 2 else 0
+        return major, minor, patch
+    except:
+        return 0, 0, 0
 
-def load_train_assets(train_meta_path, preproc_override=None, model_override=None):
-    with open(train_meta_path, "r", encoding="utf-8") as f:
-        tmeta = json.load(f)
 
-    preproc = preproc_override or tmeta.get("preprocess_pkl") or "sca_ml_ready_3class_preprocessed.pkl"
-    model_path = model_override or tmeta.get("models", {}).get("xgb_path") or "model_xgb.json"
+def compare_versions(v1, v2):
+    """Return -1 if v1<v2, 0 if equal, 1 if v1>v2."""
+    a1, b1, c1 = parse_version(v1)
+    a2, b2, c2 = parse_version(v2)
+    if (a1, b1, c1) < (a2, b2, c2):
+        return -1
+    if (a1, b1, c1) > (a2, b2, c2):
+        return 1
+    return 0
 
-    bundle = joblib.load(preproc)
-    # encoders from PKL
-    ohe_ecosys = bundle["encoders"]["ohe_ecosystem"]
-    ohe_sev    = bundle["encoders"]["ohe_severity"]
-    hash_cfg   = bundle["encoders"]["feature_hasher_pkg"]
-    num_cols   = bundle["columns_used"]["numeric"]
-    feature_names = bundle["feature_names"]
-    label_map = bundle["label_map"]
 
-    # xgb model
-    xgb_model = xgb.Booster()
-    xgb_model.load_model(model_path)
+# ---------------------- ECOSYSTEM DETECTION ----------------------
+def detect_ecosystem(pkg):
+    p = pkg.lower()
+    # quick hints, you can add more if you want
+    npm_names = {"express", "lodash", "axios"}
+    pypi_names = {"requests", "flask", "django", "urllib3", "pillow", "numpy", "pandas"}
+    ruby_names = {"rails", "sinatra", "rake", "jekyll"}
 
-    return {
-        "ohe_ecosys": ohe_ecosys,
-        "ohe_sev": ohe_sev,
-        "hash_dims": int(hash_cfg["n_features"]),
-        "num_cols": num_cols,
-        "feature_names": feature_names,
-        "label_map": label_map,
-        "xgb_model": xgb_model,
+    if p in npm_names:
+        return "npm"
+    if p in pypi_names:
+        return "PyPI"
+    if p in ruby_names:
+        return "RubyGems"
+
+    # fallback guess: PyPI
+    return "PyPI"
+
+
+# ---------------------- LATEST VERSION (REGISTRIES) ----------------------
+def get_latest_version(package, ecosystem):
+    eco = ecosystem.lower()
+    try:
+        if eco == "pypi":
+            url = f"https://pypi.org/pypi/{package}/json"
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                return r.json()["info"]["version"]
+
+        if eco == "npm":
+            url = f"https://registry.npmjs.org/{package}"
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                data = r.json()
+                latest = data.get("dist-tags", {}).get("latest")
+                if latest:
+                    return latest
+
+        if eco == "rubygems":
+            url = f"https://rubygems.org/api/v1/versions/{package}/latest.json"
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                return r.json().get("version")
+
+    except Exception:
+        return None
+
+    return None
+
+
+# ---------------------- OSV CHECK (RULE: VULNERABLE?) ----------------------
+def is_vulnerable_osv(package, ecosystem, version):
+    url = "https://api.osv.dev/v1/query"
+    payload = {
+        "package": {"name": package, "ecosystem": ecosystem},
+        "version": version,
     }
-
-def load_latest_meta(meta_path):
-    # expected shape: { "<ecosystem>": { "<package_name>": { "latest_version": "...", "latest_release_date": "...", "current_release_date": "..." }, ... } }
-    if not os.path.exists(meta_path):
-        return {}
-    with open(meta_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def parse_date_safe(x):
-    if not x or pd.isna(x):
-        return pd.NaT
     try:
-        return pd.to_datetime(x, utc=True)
+        r = requests.post(url, json=payload, timeout=20)
+        if r.status_code != 200:
+            return False, None, None
+        data = r.json()
+        vulns = data.get("vulns") or []
+        if not vulns:
+            return False, None, None
+        # just take first vuln as representative
+        v = vulns[0]
+        vid = v.get("id")
+        severity = None
+        if v.get("severity"):
+            try:
+                severity = float(v["severity"][0].get("score"))
+            except Exception:
+                severity = None
+        return True, vid, severity
     except Exception:
-        return pd.NaT
+        return False, None, None
 
-def version_tuple(s):
+
+# ---------------------- FEATURE ENGINEERING (MATCH TRAINING) ----------------------
+def build_features_for_ml(df):
+    df = df.copy()
+
+    # version features
+    df["current_major"], df["current_minor"], df["current_patch"] = zip(
+        *df["current_version"].apply(parse_version)
+    )
+    df["latest_major"], df["latest_minor"], df["latest_patch"] = zip(
+        *df["latest_version"].apply(parse_version)
+    )
+
+    df["version_gap_major"] = df["latest_major"] - df["current_major"]
+    df["version_gap_minor"] = df["latest_minor"] - df["current_minor"]
+    df["version_gap_patch"] = df["latest_patch"] - df["current_patch"]
+
+    df["is_latest"] = (df["current_version"] == df["latest_version"]).astype(int)
+
+    # cvss score + vuln flag already set upstream
+    df["cvss_score_f"] = df["cvss_score_f"].astype(float)
+    df["has_vuln_id"] = df["has_vuln_id"].astype(int)
+
+    return df
+
+
+# ---------------------- PARSE requirements lines ----------------------
+def parse_req_line(line):
+    if "==" not in line:
+        return None, None
+    pkg, ver = line.strip().split("==", 1)
+    return pkg.strip(), ver.strip()
+
+
+# ---------------------- MAIN ----------------------
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python sca_inference_with_rules.py <requirements.txt>")
+        return
+
+    input_file = sys.argv[1]
+
     try:
-        v = V.parse(str(s))
-        return getattr(v, "major", 0), getattr(v, "minor", 0), getattr(v, "micro", 0)
+        with open(input_file, "r") as f:
+            lines = f.readlines()
     except Exception:
-        return (0, 0, 0)
+        print(f"ERROR: cannot read {input_file}")
+        return
 
-def smart_gap_is_outdated(cur, lat):
-    # R2: OUTDATED if major or minor differ; patch-only difference is OK
+    # Try to load ML model (optional)
     try:
-        ca, cb = V.parse(str(cur)), V.parse(str(lat))
-        if ca.major != cb.major:
-            return True
-        if ca.minor != cb.minor:
-            return True
-        return False
+        ml_model = joblib.load("sca_model.pkl")
+        ml_le = joblib.load("sca_label_encoder.pkl")
+        use_ml = True
+        print("Loaded ML model for hybrid predictions.")
     except Exception:
-        return False
+        ml_model = None
+        ml_le = None
+        use_ml = False
+        print("WARNING: ML model not found, using rules only.")
 
-def build_single_row_df(ecosystem, package_name, version, meta_row):
-    # meta_row may contain: latest_version, latest_release_date, current_release_date, is_synthetic
-    latest_version = (meta_row or {}).get("latest_version")
-    latest_release_date = (meta_row or {}).get("latest_release_date")
-    current_release_date = (meta_row or {}).get("current_release_date")
-    is_synthetic = (meta_row or {}).get("is_synthetic", 0)
+    rows = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "package_name" in line:
+            # skip header or comments
+            continue
 
-    ver_major, ver_minor, ver_patch = version_tuple(version)
-    lat_major, lat_minor, lat_patch = version_tuple(latest_version) if latest_version else (0,0,0)
+        pkg, ver = parse_req_line(line)
+        if not pkg:
+            print(f"Skipping invalid line: {line}")
+            continue
 
-    row = {
-        "ecosystem": ecosystem or "UNKNOWN",
-        "package_name": package_name or "unknown",
-        "version": version or "0.0.0",
-        "severity": "NONE",               # default if not provided
-        "cvss_base_score": 0.0,
-        "reference_count": 0.0,
-        "is_vulnerable_Y": 0.0,
-        "is_synthetic": float(is_synthetic),
+        eco = detect_ecosystem(pkg)
+        latest = get_latest_version(pkg, eco)
+        if not latest:
+            latest = ver  # fallback
 
-        "ver_major": float(ver_major),
-        "ver_minor": float(ver_minor),
-        "ver_patch": float(ver_patch),
-        "ver_is_pre": 0.0,
+        vuln, vuln_id, cvss = is_vulnerable_osv(pkg, eco, ver)
 
-        "latest_major": float(lat_major),
-        "latest_minor": float(lat_minor),
-        "latest_patch": float(lat_patch),
-        "latest_is_pre": 0.0,
+        # rule-based label
+        if vuln:
+            rule_label = "VULNERABLE"
+        else:
+            cmp = compare_versions(ver, latest)
+            if cmp < 0:
+                rule_label = "OUTDATED"
+            else:
+                rule_label = "SAFE"
 
-        "is_latest": float(0 if latest_version and version != latest_version else 1),
-        "gap_major": float(max(0, lat_major - ver_major)),
-        "gap_minor": float(max(0, lat_minor - ver_minor)),
-        "gap_patch": float(max(0, lat_patch - ver_patch)),
-    }
-
-    # date features
-    now = pd.Timestamp.utcnow()
-    crd = parse_date_safe(current_release_date)
-    lrd = parse_date_safe(latest_release_date)
-    row["age_days"]        = float((now - crd).days) if isinstance(crd, pd.Timestamp) else 0.0
-    row["latest_age_days"] = float((now - lrd).days) if isinstance(lrd, pd.Timestamp) else 0.0
-    row["staleness_days"]  = float((lrd - crd).days) if (isinstance(lrd, pd.Timestamp) and isinstance(crd, pd.Timestamp)) else 0.0
-
-    return row, latest_version
-
-def rows_from_csv(path):
-    df = pd.read_csv(path)
-    needed = ["ecosystem","package_name","version"]
-    for c in needed:
-        if c not in df.columns:
-            raise SystemExit(f"Missing column '{c}' in {path}")
-    return df[needed].to_dict(orient="records")
-
-def rows_from_single(ecosystem, package, version):
-    if not (ecosystem and package and version):
-        raise SystemExit("Provide --ecosystem --package --version for single-mode, or use --input CSV.")
-    return [{"ecosystem": ecosystem, "package_name": package, "version": version}]
-
-def encode_rows(rows, latest_meta, assets):
-    # Build feature blocks using saved encoders + numeric column list
-    ohe_ecosys = assets["ohe_ecosys"]
-    ohe_sev    = assets["ohe_sev"]
-    hash_dims  = assets["hash_dims"]
-    num_cols   = assets["num_cols"]
-
-    # We will assemble sparse matrices piece by piece
-    from sklearn.feature_extraction import FeatureHasher
-    hasher = FeatureHasher(n_features=hash_dims, input_type="string")
-
-    X_blocks = []
-    pack = []  # carry per-row context (for rules)
-    for r in rows:
-        eco = str(r["ecosystem"])
-        pkg = str(r["package_name"])
-        ver = str(r["version"])
-
-        meta_row = (latest_meta.get(eco, {}) or {}).get(pkg)
-        # Unknown package → mark; still build a row for consistency but we will short-circuit to UNKNOWN
-        unknown_pkg = meta_row is None
-
-        row_dict, latest_version = build_single_row_df(eco, pkg, ver, meta_row)
-
-        # categorical
-        X_ecosys = ohe_ecosys.transform(pd.DataFrame([{"ecosystem": eco}]))
-        X_sev    = ohe_sev.transform(pd.DataFrame([{"severity": row_dict["severity"]}]))
-
-        # hashed pkg
-        X_pkg = hasher.transform([[pkg]])
-
-        # numeric block: ensure every expected column present
-        num_row = [float(row_dict.get(c, 0.0)) for c in num_cols]
-        X_num = sp.csr_matrix(np.array(num_row, dtype=float).reshape(1, -1))
-
-        # final row
-        X_row = sp.hstack([X_ecosys, X_sev, X_pkg, X_num], format="csr")
-        X_blocks.append(X_row)
-
-        pack.append({
+        rows.append({
             "ecosystem": eco,
             "package_name": pkg,
-            "version": ver,
-            "latest_version": latest_version,
-            "unknown_pkg": unknown_pkg
+            "current_version": ver,
+            "latest_version": latest,
+            "rule_label": rule_label,
+            "has_vuln_id": 1 if vuln else 0,
+            "cvss_score_f": cvss if cvss is not None else 0.0,
+            "osv_vuln_id": vuln_id
         })
 
-    X = sp.vstack(X_blocks, format="csr")
-    return X, pack
+    if not rows:
+        print("No valid dependencies found.")
+        return
 
-def predict_with_rules(rows, latest_meta, assets):
-    X, ctx = encode_rows(rows, latest_meta, assets)
-    dmat = xgb.DMatrix(X)
+    df = pd.DataFrame(rows)
 
-    # model predicts probs → pick argmax (0=SAFE,1=OUTDATED,2=VULNERABLE)
-    probs = assets["xgb_model"].predict(dmat)
-    pred_ids = np.argmax(probs, axis=1)
-    id2label = {v:k for k,v in assets["label_map"].items()}
+    # ---------- ML PART (optional) ----------
+    if use_ml:
+        feat_df = build_features_for_ml(df)
+        X = feat_df[[
+            "current_major", "current_minor", "current_patch",
+            "latest_major", "latest_minor", "latest_patch",
+            "version_gap_major", "version_gap_minor", "version_gap_patch",
+            "is_latest", "cvss_score_f", "has_vuln_id",
+            "ecosystem", "package_name"
+        ]]
+        preds = ml_model.predict(X)
+        probs = ml_model.predict_proba(X)
 
-    out = []
-    for i, base_label_id in enumerate(pred_ids):
-        base_label = id2label.get(int(base_label_id), "SAFE")
-        row = ctx[i]
-        eco, pkg, ver = row["ecosystem"], row["package_name"], row["version"]
-        lat = row["latest_version"]
-
-        # Rule 1: unknown package
-        if row["unknown_pkg"]:
-            out.append({
-                "ecosystem": eco, "package_name": pkg, "version": ver,
-                "model_prediction": base_label,
-                "final_label": "UNKNOWN",
-                "reason": "Package not found in metadata",
-                "suggested_action": "Verify package name or add to metadata"
-            })
-            continue
-
-        # Rule 2: smart version gap → OUTDATED
-        if lat and smart_gap_is_outdated(ver, lat):
-            out.append({
-                "ecosystem": eco, "package_name": pkg, "version": ver,
-                "latest_version": lat,
-                "model_prediction": base_label,
-                "final_label": "OUTDATED",
-                "reason": f"Major/minor behind latest ({lat})",
-                "suggested_action": f"Upgrade to {lat}"
-            })
-            continue
-
-        # Else: keep model result
-        out.append({
-            "ecosystem": eco, "package_name": pkg, "version": ver,
-            "latest_version": lat,
-            "model_prediction": base_label,
-            "final_label": base_label,
-            "reason": "No rule override",
-            "suggested_action": "No action" if base_label=="SAFE" else "Review advisory"
-        })
-
-    return out
-
-# ---------- main ----------
-def main():
-    args = parse_args()
-
-    # inputs
-    if args.input:
-        rows = rows_from_csv(args.input)
+        ml_labels = [ml_le.inverse_transform([p])[0] for p in preds]
+        ml_conf = [float(max(p_row)) for p_row in probs]
     else:
-        rows = rows_from_single(args.ecosystem, args.package, args.version)
+        ml_labels = ["N/A"] * len(df)
+        ml_conf = [0.0] * len(df)
 
-    latest_meta = load_latest_meta(args.meta)
-    assets = load_train_assets(args.train_meta, args.preproc, args.model)
+    # ---------- FINAL RESULTS ----------
+    results = []
+    for i, row in df.iterrows():
+        results.append({
+            "package": row["package_name"],
+            "version": row["current_version"],
+            "ecosystem": row["ecosystem"],
+            "rule_label": row["rule_label"],
+            "osv_vuln_id": row["osv_vuln_id"],
+            "ml_label": ml_labels[i],
+            "ml_confidence": round(ml_conf[i], 5),
+        })
 
-    results = predict_with_rules(rows, latest_meta, assets)
+    with open("sca_report.json", "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=4)
 
-    # Non-blocking mode (P-C): always exit 0. Only write JSON.
-    with open(args.out, "w", encoding="utf-8") as f:
-        json.dump({"generated_at": datetime.utcnow().isoformat(), "items": results}, f, indent=2)
-    print(f"Saved JSON report → {args.out}")
+    print("\n=== HYBRID SCA RESULTS (rules + ML) ===")
+    print(json.dumps(results, indent=4))
+    print("\nSaved → sca_report.json")
+
 
 if __name__ == "__main__":
     main()
