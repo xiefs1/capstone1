@@ -1,113 +1,68 @@
-name: ZAP Scan + PDF + Email
+name: ZAP Scan
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main ]
 
 jobs:
-
-  # ===============================
-  # 1) Run ZAP Scan (Docker + zap.py)
-  # ===============================
-  zap_scan:
+  zap-scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Install Python deps
-        run: |
-          pip install python-owasp-zap-v2.4
-          pip install reportlab
-          pip install pdfkit
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-      - name: Start ZAP Daemon (Docker)
-        run: |
-          docker run -u root -d -p 8090:8090 \
-            ghcr.io/zaproxy/zaproxy:stable zap.sh \
-            -daemon -port 8090 \
-            -config api.key=${{ secrets.ZAP_API_KEY }}
+    - name: Install Python Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install zapv2
+        pip install reportlab
 
-      - name: Wait 10 seconds for ZAP to boot
-        run: sleep 10
+    # ---------------------------------------------------------
+    # START LOCAL HTTP SERVER TO HOST YOUR HTML FILE
+    # ---------------------------------------------------------
+    - name: Start Local HTTP Server
+      run: |
+        echo "Starting local HTTP server on port 8000"
+        python3 -m http.server 8000 &
+        sleep 3
 
-      - name: Run zap.py Scan Script
-        env:
-          ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-        run: |
-          python zap.py
+    # ---------------------------------------------------------
+    # START ZAP DAEMON ON PORT 8090
+    # ---------------------------------------------------------
+    - name: Start ZAP Daemon (Docker)
+      run: |
+        echo "Starting ZAP daemon on port 8090"
+        docker run -u root -d -p 8090:8090 \
+          ghcr.io/zaproxy/zaproxy:stable zap.sh \
+          -daemon -port 8090 \
+          -config api.key=${{ secrets.ZAP_API_KEY }}
 
-      - name: Upload ZAP Raw Reports (HTML & JSON)
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap_raw_reports
-          path: |
-            zap-report.html
-            zap-report.json
+    - name: Wait for ZAP to fully start
+      run: sleep 15
 
-  # ===============================
-  # 2) Convert Reports → PDF
-  # ===============================
-  convert_to_pdf:
-    runs-on: ubuntu-latest
-    needs: zap_scan
+    # ---------------------------------------------------------
+    # RUN YOUR PYTHON zap.py SCAN SCRIPT
+    # ---------------------------------------------------------
+    - name: Run zap.py Scan
+      env:
+        ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
+      run: python zap.py
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download ZAP Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: zap_raw_reports
-
-      - name: Install PDF tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wkhtmltopdf
-          pip install reportlab
-          pip install pdfkit
-
-      - name: Run PDF Conversion Script
-        env:
-          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}  # NOT USED YET
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }} # NOT USED YET
-          GMAIL_RECIPIENT: ${{ vars.MAIL_TO }}
-        run: |
-          python zap_convert_pdf_email.py
-
-      - name: Upload PDF Reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap_pdf_reports
-          path: |
-            zap-report-html.pdf
-            zap-report-json.pdf
-
-  # ===============================
-  # 3) SEND EMAIL
-  # ===============================
-  email_reports:
-    runs-on: ubuntu-latest
-    needs: convert_to_pdf
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download PDF Reports
-        uses: actions/download-artifact@v4
-        with:
-          name: zap_pdf_reports
-
-      - name: Install Email Dependencies
-        run: pip install reportlab pdfkit
-
-      - name: Email Reports
-        env:
-          GMAIL_EMAIL: ${{ secrets.GMAIL_USERNAME }}
-          GMAIL_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          GMAIL_RECIPIENT: ${{ vars.MAIL_TO }}
-        run: |
-          python zap_convert_pdf_email.py
+    # ---------------------------------------------------------
+    # UPLOAD REPORTS
+    # ---------------------------------------------------------
+    - name: Upload ZAP Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap_reports
+        path: |
+          zap-report.html
+          zap-report.json
+          zap-scan.log
