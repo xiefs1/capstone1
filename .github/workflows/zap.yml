@@ -1,93 +1,13 @@
-name: ZAP Scan
+name: ZAP Baseline Scan
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
-  zap-scan:
+  zap_scan:
     runs-on: ubuntu-latest
-
     steps:
-    - name: docker ps check
-      run: docker ps -a
-    
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.7.0
       with:
-        python-version: '3.11'
-
-    - name: Install Python Dependencies
-      run: |
-        pip install -r requirements.txt
-        pip install python-owasp-zap-v2.4
-        pip install reportlab
-
-    # ---------------------------------------------------------
-    # START LOCAL HTTP SERVER TO HOST YOUR HTML FILE
-    # ---------------------------------------------------------
-    - name: Start Local HTTP Server
-      run: |
-        echo "Starting local HTTP server on port 8000"
-        python3 -m http.server 8000 &
-        sleep 3
-
-    # ---------------------------------------------------------
-    # START ZAP DAEMON ON PORT 8090
-    # ---------------------------------------------------------
-    - name: Start ZAP Daemon
-      run: |
-          docker pull ghcr.io/zaproxy/zaproxy:stable
-      
-          docker run -d \
-            --name zap \
-            -p 8090:8090 \
-            -e JAVA_OPTS="-Djava.awt.headless=true" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap.sh -daemon \
-              -host 0.0.0.0 \
-              -port 8090 \
-              -config api.key=${{ secrets.ZAP_API_KEY }} \
-              -config addon.autoupdate=false
-              
-    - name: Check running containers
-      run: docker ps -a
-
-
-    - name: Wait for ZAP Startup
-      run: |
-        for i in {1..15}
-        do
-          echo "Checking ZAP at http://127.0.0.1:8090..."
-          if curl -s http://127.0.0.1:8090 > /dev/null; then
-            echo "ZAP is up!"
-            exit 0
-          fi
-          sleep 2
-        done
-        echo "ZAP FAILED TO START"
-        exit 1
-
-    # ---------------------------------------------------------
-    # RUN YOUR PYTHON zap.py SCAN SCRIPT
-    # ---------------------------------------------------------
-    - name: Run zap.py Scan
-      env:
-        ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-      run: python3 zap.py
-
-    # ---------------------------------------------------------
-    # UPLOAD REPORTS
-    # ---------------------------------------------------------
-    - name: Upload ZAP Reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap_reports
-        path: |
-          zap-report.html
-          zap-report.json
-          zap-scan.log
+        target: "https://xiefs1.github.io/capstone1/vulnerable_test_cases.html"
