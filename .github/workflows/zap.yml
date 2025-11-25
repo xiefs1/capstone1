@@ -25,7 +25,7 @@ jobs:
       - name: Start ZAP Daemon (Docker)
         run: |
           docker run -u root -d -p 8090:8090 \
-            owasp/zap2docker-stable zap.sh \
+            ghcr.io/zaproxy/zaproxy:stable zap.sh \
             -daemon -port 8090 \
             -config api.key=${{ secrets.ZAP_API_KEY }}
 
