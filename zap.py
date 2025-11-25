@@ -20,7 +20,7 @@ API_KEY = os.getenv("ZAP_API_KEY")
 if not API_KEY:
     raise SystemExit("ERROR: Set ZAP_API_KEY environment variable.")
 
-ZAP_ADDR = "http://127.0.0.1:8080"          # ZAP default port
+ZAP_ADDR = "http://127.0.0.1:8090"          # ZAP default port
 BASE_URL = "https://xiefs1.github.io/capstone1"
 
 PAGES = [
@@ -111,4 +111,5 @@ else:
         print(f" - [{a.get('risk')}] {a.get('alert')} → {a.get('url')}")
 
 print("\n[*] Scan completed.")
+
 
