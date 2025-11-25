@@ -21,7 +21,7 @@ jobs:
     - name: Install Python Dependencies
       run: |
         pip install -r requirements.txt
-        pip install zapv2
+        pip install python-owasp-zap-v2.4
         pip install reportlab
 
     # ---------------------------------------------------------
