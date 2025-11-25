@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: docker ps check
+      run: docker ps -a
+    
     - name: Checkout Repository
       uses: actions/checkout@v4
 
@@ -36,16 +39,26 @@ jobs:
     # ---------------------------------------------------------
     # START ZAP DAEMON ON PORT 8090
     # ---------------------------------------------------------
-    - name: Start ZAP Daemon (Docker)
+    - name: Start ZAP Daemon
       run: |
-        echo "Starting ZAP daemon on port 8090"
-        docker run -u root -d -p 8090:8090 \
-          ghcr.io/zaproxy/zaproxy:stable zap.sh \
-          -daemon -port 8090 \
+        docker run -d --name zap -p 8090:8090 \
+          ghcr.io/zaproxy/zaproxy:stable \
+          zap.sh -daemon -host 0.0.0.0 -port 8090 \
           -config api.key=${{ secrets.ZAP_API_KEY }}
 
-    - name: Wait for ZAP to fully start
-      run: sleep 15
+    - name: Wait for ZAP Startup
+      run: |
+        for i in {1..15}
+        do
+          echo "Checking ZAP at http://127.0.0.1:8090..."
+          if curl -s http://127.0.0.1:8090 > /dev/null; then
+            echo "ZAP is up!"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "ZAP FAILED TO START"
+        exit 1
 
     # ---------------------------------------------------------
     # RUN YOUR PYTHON zap.py SCAN SCRIPT
@@ -53,7 +66,7 @@ jobs:
     - name: Run zap.py Scan
       env:
         ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
-      run: python zap.py
+      run: python3 zap.py
 
     # ---------------------------------------------------------
     # UPLOAD REPORTS
