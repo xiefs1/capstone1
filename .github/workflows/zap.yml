@@ -30,6 +30,7 @@ jobs:
           target: "http://127.0.0.1:8000/vulnerable_test_cases.html"
           cmd_options: "-a"
           allow_issue_writing: false   # <--- STOP ZAP FROM USING BROKEN UPLOADER
+          fail_action: false           # ← REQUIRED (stops upload from crashing)
 
       - name: Upload ZAP Reports manually
         uses: actions/upload-artifact@v4
