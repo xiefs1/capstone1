@@ -41,10 +41,19 @@ jobs:
     # ---------------------------------------------------------
     - name: Start ZAP Daemon
       run: |
-        docker run -d --name zap -p 8090:8090 \
-          ghcr.io/zaproxy/zaproxy:stable \
-          zap.sh -daemon -host 0.0.0.0 -port 8090 \
-          -config api.key=${{ secrets.ZAP_API_KEY }}
+          docker pull ghcr.io/zaproxy/zaproxy:stable
+      
+          docker run -d \
+            --name zap \
+            -p 8090:8090 \
+            --entrypoint /bin/sh \
+            ghcr.io/zaproxy/zaproxy:stable \
+            -c "zap.sh -daemon -host 0.0.0.0 -port 8090 \
+                -config api.key=${{ secrets.ZAP_API_KEY }}"
+      
+    - name: Check running containers
+      run: docker ps -a
+
 
     - name: Wait for ZAP Startup
       run: |
