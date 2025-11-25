@@ -1,13 +1,13 @@
-name: ZAP Baseline Scan
+name: ZAP Full Scan
 
 on:
   workflow_dispatch:
 
 jobs:
-  zap_scan:
+  zap_full_scan:
     runs-on: ubuntu-latest
     steps:
-    - name: ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.7.0
+    - name: ZAP Full Scan
+      uses: zaproxy/action-full-scan@v0.6.0
       with:
-        target: "https://xiefs1.github.io/capstone1/vulnerable_test_cases.html"
+        target: "http://127.0.0.1:8000"
