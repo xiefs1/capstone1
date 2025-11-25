@@ -3,6 +3,10 @@ name: ZAP Baseline Scan
 on:
   workflow_dispatch:
 
+permissions:
+    contents: write
+    issues: write
+
 jobs:
   zap-baseline:
     runs-on: ubuntu-latest
