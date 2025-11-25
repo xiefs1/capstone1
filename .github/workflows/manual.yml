@@ -1,0 +1,234 @@
+name: SAST + SCA Security Pipeline
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  # ========= SAST =========
+  MODEL_ID: "1xexQeG3ktXb9mZUPFmTjDI0vjyrvtUQY"
+  MODEL_PATH: "github/SAST/models/enhanced_sast_models.joblib"
+  SAST_INPUT_FILE: "vulnerable_test_cases.html"
+
+  # ========= SCA =========
+  SCA_ENCODER_ID: "1afskfJvbQsz7gxEuIafmwGzhwBDHKCEJ"
+  SCA_MODEL_ID: "1HJQWPEh38UeUygPI8iilK-u1Ldt23gCL"
+
+jobs:
+
+  # ====================================
+  # 1) SAST SCAN
+  # ====================================
+  sast_scan:
+    runs-on: ubuntu-latest
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install gdown reportlab
+
+      - name: Download SAST model
+        run: |
+          echo "--- Downloading SAST model ---"
+          mkdir -p github/SAST/models
+          gdown "https://drive.google.com/uc?export=download&id=${MODEL_ID}" -O "${MODEL_PATH}"
+
+      - name: Run SAST Scan
+        run: |
+          echo "--- Running SAST Scan ---"
+          mkdir -p outputs
+          python run_enhanced_sast_on_html.py \
+            --input "${SAST_INPUT_FILE}" \
+            --model "${MODEL_PATH}" \
+            --output "sast_enhanced_report.json"
+          mv sast_enhanced_report.json outputs/sast_enhanced_report.json
+
+      - name: Upload SAST JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast_enhanced_json
+          path: outputs/sast_enhanced_report.json
+
+
+  # ====================================
+  # 2) SAST PDF GENERATION
+  # ====================================
+  sast_generate_pdf:
+    runs-on: ubuntu-latest
+    needs: sast_scan
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download SAST JSON artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sast_enhanced_json
+          path: outputs
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install reportlab
+
+      - name: Generate SAST PDF
+        run: |
+          echo "--- Generating SAST PDF ---"
+          python convert_json_to_pdf.py
+          mkdir -p outputs
+          if [ -f "sast_report.pdf" ]; then
+            mv sast_report.pdf outputs/sast_report.pdf
+          fi
+
+      - name: Upload SAST PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast_pdf
+          path: outputs/sast_report.pdf
+
+
+  # ====================================
+  # 3) SEND SAST PDF EMAIL
+  # ====================================
+  sast_email_report:
+    runs-on: ubuntu-latest
+    needs: sast_generate_pdf
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download SAST PDF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sast_pdf
+          path: outputs
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Send SAST PDF via Email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          GMAIL_RECIPIENT: ${{ vars.GMAIL_RECIPIENT }}
+        run: |
+          echo "--- Sending SAST PDF via Email ---"
+          python email_pdf.py
+
+
+  # ====================================
+  # 4) SCA SCAN (RULES + ML)
+  # ====================================
+  sca_scan:
+    runs-on: ubuntu-latest
+    needs: sast_email_report
+      # ^ optional dependency – remove this line if SCA should run in parallel
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install gdown reportlab
+
+      - name: Download SCA Encoder + Model
+        run: |
+          echo "--- Downloading SCA Encoder + Model ---"
+          mkdir -p SCA1
+          gdown "https://drive.google.com/uc?export=download&id=${SCA_ENCODER_ID}" -O SCA1/sca_label_encoder.pkl
+          gdown "https://drive.google.com/uc?export=download&id=${SCA_MODEL_ID}" -O SCA1/sca_model.pkl
+
+      - name: Run SCA Scan
+        run: |
+          echo "--- Running SCA Scan ---"
+          python SCA1/sca_inference_with_rules.py test_sca_requirements.txt || \
+            python SCA1/sca_inference_with_rules.py SCA1/test_sca_requirements.txt
+          mkdir -p outputs
+          mv sca_report.json outputs/sca_report.json
+
+      - name: Upload SCA JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca_json
+          path: outputs/sca_report.json
+
+
+  # ====================================
+  # 5) SCA PDF GENERATION
+  # ====================================
+  sca_generate_pdf:
+    runs-on: ubuntu-latest
+    needs: sca_scan
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download SCA JSON artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sca_json
+          path: outputs
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install reportlab
+
+      - name: Generate SCA PDF
+        run: |
+          echo "--- Generating SCA PDF ---"
+          python sca_convert_json_to_pdf.py
+          mkdir -p outputs
+
+      - name: Upload SCA PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca_pdf
+          path: outputs/sca_report.pdf
+
+
+  # ====================================
+  # 6) SEND SCA EMAIL
+  # ====================================
+  sca_email_report:
+    runs-on: ubuntu-latest
+    needs: sca_generate_pdf
+    container: python:3.10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download SCA PDF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sca_pdf
+          path: outputs
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Send SCA PDF via Email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          GMAIL_RECIPIENT: ${{ vars.GMAIL_RECIPIENT }}
+        run: |
+          echo "--- Sending SCA PDF via Email ---"
+          python sca_email_report.py
