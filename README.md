@@ -1,6 +1,6 @@
-# Automated Pentesting Platform – System Files Submission
+# EnforceAI Security Platform – System Files Submission
 
-This repository contains the system implementation files for an **Automated Application Pentesting Platform** developed as part of **Capstone Project 2 (CP2)**.
+This repository contains the system implementation files for an **EnforceAI Security Platform** developed as part of **Capstone Project 2 (CP2)**.
 
 The contents of this repository serve as **supporting technical evidence** for the final report and document how automated **Static Application Security Testing (SAST)**, **Software Composition Analysis (SCA)**, and **Dynamic Application Security Testing (DAST)** were implemented, executed, and evaluated.
 
@@ -120,4 +120,4 @@ It is **not intended to replace enterprise-grade commercial pentesting tools**.
 
 **See Ming Hau**  
 Capstone Project 2 (CP2)  
-Automated Application Pentesting
+EnforceAI Security Platform
