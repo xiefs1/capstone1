@@ -1,162 +1,123 @@
-EnforceAI Security Platform
+# Automated Pentesting Platform – System Files Submission
 
-An AI-Driven Automated Pentesting Framework for Continuous SAST, SCA, and DAST Validation
+This repository contains the system implementation files for an **Automated Application Pentesting Platform** developed as part of **Capstone Project 2 (CP2)**.
 
-📌 Project Overview
+The contents of this repository serve as **supporting technical evidence** for the final report and document how automated **Static Application Security Testing (SAST)**, **Software Composition Analysis (SCA)**, and **Dynamic Application Security Testing (DAST)** were implemented, executed, and evaluated.
 
-EnforceAI is an automated application security validation platform developed as a Capstone Project (CP2).
-It integrates Static Application Security Testing (SAST), Software Composition Analysis (SCA), and Dynamic Application Security Testing (DAST) into a unified, script-driven workflow with AI-assisted reporting.
+---
 
-The platform is designed to simulate a realistic CI/CD security pipeline, where security checks are executed continuously against web application code and dependencies, and results are consolidated into structured reports for analysis and decision-making.
+## Repository Overview
 
-This project focuses on practical automation, measurable security outcomes, and academic reproducibility, rather than theoretical security claims.
+The repository is structured to reflect the **automated pentesting workflow** described in the project methodology and evaluation chapters.
 
-🎯 Objectives
+### Directory and File Structure
 
-Automate SAST, SCA, and DAST security testing using Python-based orchestration
+- SAST execution scripts and test cases  
+- SCA analysis and vulnerability validation artifacts  
+- DAST scan outputs and comparison results  
+- Reporting and automation scripts  
 
-Apply AI-assisted analysis to enhance vulnerability classification and reporting
+Each component directly maps to a specific phase of the automated pentesting pipeline.
 
-Demonstrate how security validation can be integrated into a CI/CD-style workflow
+---
 
-Generate machine-readable (JSON) and human-readable (PDF/email) security reports
+## Pentesting Pipeline Overview
 
-Evaluate security effectiveness using defined metrics instead of subjective claims
+The implemented system follows a staged automated security validation flow:
 
-🧠 System Architecture (High Level)
-Source Code / Web App
-        ↓
- Automated SAST Analysis
-        ↓
- Dependency & Vulnerability Scan (SCA)
-        ↓
- Dynamic Application Scan (DAST)
-        ↓
- AI-Enhanced Result Processing
-        ↓
- Consolidated Reports (JSON → PDF → Email)
+Target Application / Source Code
+↓
+Static Application Security Testing (SAST)
+↓
+Software Composition Analysis (SCA)
+↓
+Dynamic Application Security Testing (DAST)
+↓
+Result Processing and Report Generation
 
 
-Each stage is implemented as a standalone Python module, allowing modular execution or full pipeline automation.
+Each stage is executed programmatically using Python scripts to simulate a CI/CD-style security pipeline.
 
-🔍 Key Components
-1️⃣ Static Application Security Testing (SAST)
+---
 
-Scans HTML and source files for insecure patterns
+## Component Descriptions
 
-Detects common web vulnerabilities such as:
+### Static Application Security Testing (SAST)
 
-Insecure forms
+This component performs automated static analysis on HTML and application files to detect insecure coding patterns without executing the application.
 
-Missing input validation
+Covered checks include:
+- Insecure form handling
+- Missing input validation
+- Unsafe HTML constructs
 
-Unsafe HTML constructs
+**Relevant files:**
+- `run_enhanced_sast_on_html.py`
+- `vulnerable_test_cases.html`
+- `sast_enhanced_report.json`
 
-Outputs structured JSON reports for further processing
+These files support the **SAST implementation and results** section of the report.
 
-Relevant files:
+---
 
-run_enhanced_sast_on_html.py
+### Software Composition Analysis (SCA)
 
-vulnerable_test_cases.html
+This component evaluates third-party dependencies to identify known vulnerabilities associated with external libraries.
 
-sast_enhanced_report.json
+The analysis simulates real-world dependency risk assessment by validating findings against vulnerability references.
 
-2️⃣ Software Composition Analysis (SCA)
+Artifacts in this section demonstrate:
+- Dependency risk identification
+- Vulnerability validation logic
+- Result normalization for reporting
 
-Identifies third-party dependency risks
+This supports the **SCA methodology and evaluation** chapter.
 
-Validates vulnerabilities against known databases
+---
 
-Simulates real-world dependency risk assessment
+### Dynamic Application Security Testing (DAST)
 
-Relevant files:
+This component performs dynamic security testing against a running web application to identify runtime vulnerabilities.
 
-SCA scripts and validation logic
+It includes:
+- Local active scanning
+- Baseline versus active scan comparison
+- Runtime behavior analysis
 
-OSV-style vulnerability checks
+DAST artifacts demonstrate how vulnerabilities can only be detected during execution, complementing SAST and SCA findings.
 
-3️⃣ Dynamic Application Security Testing (DAST)
+---
 
-Performs active security testing on a running web application
+### Reporting and Automation
 
-Simulates attacker behavior at runtime
+This component consolidates results from all pentesting stages and converts them into human-readable formats.
 
-Compares baseline and active scan results
+Automation features include:
+- JSON result processing
+- PDF report generation
+- Email-based report distribution
 
-Relevant artifacts:
+**Relevant files:**
+- `convert_json_to_pdf.py`
+- `email_pdf.py`
 
-Scan output files
+This supports the **automation and reporting** section of the project.
 
-Local active scan results
+---
 
-4️⃣ AI-Enhanced Reporting & Automation
+## Scope and Purpose
 
-Converts JSON scan results into readable formats
+This repository is intended for:
+- Academic assessment and demonstration
+- Validation of automated pentesting workflows
+- Technical reference during project presentation and evaluation
 
-Generates PDF security reports automatically
+It is **not intended to replace enterprise-grade commercial pentesting tools**.
 
-Sends reports via email for audit and review purposes
+---
 
-Relevant files:
+## Author
 
-convert_json_to_pdf.py
-
-email_pdf.py
-
-
-⚙️ How the Pipeline Works
-
-Input: Web application files and dependency data
-
-SAST Execution: Static analysis detects code-level vulnerabilities
-
-SCA Execution: Dependencies are checked for known security risks
-
-DAST Execution: Live application is dynamically tested
-
-Processing: Results are normalized and enhanced using AI logic
-
-Output: Reports generated in JSON and PDF formats
-
-Distribution: Reports can be emailed automatically
-
-This mirrors how modern DevSecOps pipelines enforce security gates before deployment.
-
-📊 Evaluation Focus
-
-The platform is evaluated using quantifiable metrics, such as:
-
-Detection accuracy across SAST, SCA, and DAST
-
-Vulnerability classification consistency
-
-False positive reduction through enhanced logic
-
-Pipeline execution completeness
-
-This avoids vague “security improvement” claims and keeps the project academically defensible.
-
-🚀 Use Case
-
-Academic demonstration of CI/CD security automation
-
-Proof-of-concept for AI-assisted DevSecOps
-
-Portfolio project for Application Security / Cloud Security roles
-
-Foundation for future integration with Jenkins, GitLab CI, or AWS pipelines
-
-📌 Limitations
-
-Designed for educational and experimental purposes
-
-Does not replace enterprise-grade tools (e.g., Snyk, Checkmarx, Burp Pro)
-
-AI logic enhances reporting, not autonomous exploitation
-
-👤 Author
-
-See Ming Hau
-Capstone Project 2 (CP2)
-Application Security & DevSecOps Focus
+**See Ming Hau**  
+Capstone Project 2 (CP2)  
+Automated Application Pentesting
