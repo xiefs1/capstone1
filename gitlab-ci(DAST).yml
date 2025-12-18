@@ -1,0 +1,25 @@
+stages:
+  - dast
+  - report
+
+# Include the DAST template
+include:
+  - template: DAST.gitlab-ci.yml
+
+# Your selected site and scanner profiles:
+dast:
+  stage: dast
+  dast_configuration:
+    site_profile: "default-site"
+    scanner_profile: "default-scanner"
+
+email_report:
+  stage: report
+  image: python:3.11
+  script:
+    - pip install reportlab
+    - python zap_convert_pdf_email.py
+  artifacts:
+    paths:
+      - gl-dast-report.json
+    expire_in: 7 days 

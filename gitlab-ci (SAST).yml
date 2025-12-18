@@ -1,0 +1,144 @@
+image: python:3.10
+
+stages:
+  - sast
+  - sast_pdf
+  - sast_email
+  - sca
+  - sca_pdf
+  - sca_email
+
+variables:
+  # SAST model (Google Drive)
+  MODEL_ID: "1xexQeG3ktXb9mZUPFmTjDI0vjyrvtUQY"
+  MODEL_PATH: "github/SAST/models/enhanced_sast_models.joblib"
+  SAST_INPUT_FILE: "vulnerable_test_cases.html"
+
+  # SCA model + encoder (Google Drive)
+  SCA_ENCODER_ID: "1afskfJvbQsz7gxEuIafmwGzhwBDHKCEJ"
+  SCA_MODEL_ID: "1HJQWPEh38UeUygPI8iilK-u1Ldt23gCL"
+
+before_script:
+  - pip install -r requirements.txt
+  - pip install gdown
+  - pip install reportlab
+
+
+# ====================================
+# 1) SAST SCAN
+# ====================================
+sast_scan:
+  stage: sast
+  script:
+    - echo "--- Downloading SAST model ---"
+    - mkdir -p github/SAST/models
+    - gdown "https://drive.google.com/uc?export=download&id=${MODEL_ID}" -O "${MODEL_PATH}"
+
+    - echo "--- Running SAST Scan ---"
+    - mkdir -p outputs
+    - python run_enhanced_sast_on_html.py --input "${SAST_INPUT_FILE}" --model "${MODEL_PATH}" --output "sast_enhanced_report.json"
+
+
+    - mv sast_enhanced_report.json outputs/sast_enhanced_report.json
+
+  artifacts:
+    paths:
+      - outputs/sast_enhanced_report.json
+    expire_in: 1 week
+
+
+# ====================================
+# 2) SAST PDF GENERATION
+# ====================================
+sast_generate_pdf:
+  stage: sast_pdf
+  needs: ["sast_scan"]
+  script:
+    - echo "--- Generating SAST PDF ---"
+    - python convert_json_to_pdf.py
+
+    - mv sast_report.pdf outputs/sast_report.pdf
+
+  artifacts:
+    paths:
+      - outputs/sast_report.pdf
+    expire_in: 1 week
+
+
+# ====================================
+# 3) SEND SAST PDF EMAIL
+# ====================================
+sast_email_report:
+  stage: sast_email
+  needs: ["sast_generate_pdf"]
+  script:
+    - echo "--- Sending SAST PDF via Email ---"
+    - python email_pdf.py
+  when: on_success
+
+
+# ====================================
+# 4) SCA SCAN (RULES + ML)
+# ====================================
+sca_scan:
+  stage: sca
+  script:
+    - echo "--- Downloading SCA Encoder + Model ---"
+    - mkdir -p SCA1
+
+    - gdown "https://drive.google.com/uc?export=download&id=${SCA_ENCODER_ID}" -O SCA1/sca_label_encoder.pkl
+    - gdown "https://drive.google.com/uc?export=download&id=${SCA_MODEL_ID}" -O SCA1/sca_model.pkl
+
+    - echo "--- Running SCA Scan ---"
+    - python SCA1/sca_inference_with_rules.py test_sca_requirements.txt || \
+      python SCA1/sca_inference_with_rules.py SCA1/test_sca_requirements.txt
+
+    - mkdir -p outputs
+    - mv sca_report.json outputs/sca_report.json
+
+  artifacts:
+    paths:
+      - outputs/sca_report.json
+    expire_in: 1 week
+
+
+# ====================================
+# 5) SCA PDF GENERATION
+# ====================================
+sca_generate_pdf:
+  stage: sca_pdf
+  needs: ["sca_scan"]
+  script:
+    - echo "--- Generating SCA PDF ---"
+    - python sca_convert_json_to_pdf.py
+
+  artifacts:
+    paths:
+      - outputs/sca_report.pdf
+    expire_in: 1 week
+
+
+# ====================================
+# 6) SEND SCA EMAIL
+# ====================================
+sca_email_report:
+  stage: sca_email
+  needs: ["sca_generate_pdf"]
+  script:
+    - echo "--- Sending SCA PDF via Email ---"
+    - python sca_email_report.py
+  when: on_success
+
+# include:
+#   - template: Security/DAST.gitlab-ci.yml
+
+# stages:
+#   - dast
+
+# variables:
+#   DAST_WEBSITE: "https://xiefs1.github.io/capstone1/vulnerable_test_cases.html"
+#   DAST_FULL_SCAN_ENABLED: "true"
+#   DAST_DEBUG: "true"
+#   DAST_ZAP_LOG_LEVEL: "DEBUG"
+#   DAST_BROWSER_SCAN: "true"
+
